@@ -33,7 +33,7 @@ from . import model_catalog
 from .context import load_context
 from .llm import LLMFactory
 from .patcher import ProjectContext, apply_bundle
-from .prompts import CODEGEN_SYSTEM_PROMPT, PLANNER_SYSTEM_PROMPT
+from .prompts import get_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,18 @@ def _missing_api_key_message(provider: str, config: CoreConfig) -> str:
     return f"Server is not configured with a {env_var}; cannot generate code."
 
 
-def build_llm(provider: str, model: str, config: CoreConfig | None = None) -> BaseChatModel:
+def build_llm(
+    provider: str,
+    model: str,
+    config: CoreConfig | None = None,
+    *,
+    family: str = "openai-chat",
+) -> BaseChatModel:
     """Seam used by ``_plan`` / ``_codegen``; tests monkeypatch this."""
-    return LLMFactory.build(config, provider=provider, model=model)
+    kwargs = {}
+    if family == "openai-reasoning":
+        kwargs["temperature"] = 1.0
+    return LLMFactory.build(config, provider=provider, model=model, **kwargs)
 
 
 HISTORY_TURN_CAP = 20
@@ -112,6 +121,28 @@ def _render_context_block(context: ProjectContext) -> str:
     return "\n".join(parts)
 
 
+def _build_planner_messages(
+    prompt: str,
+    history: list[BaseMessage],
+    context: ProjectContext,
+    family: str,
+) -> list[BaseMessage]:
+    planner_prompt = get_prompt(family, "planner")
+    human_content = (
+        f"{_render_context_block(context)}\n\nUser request:\n{prompt or '(empty)'}"
+    )
+    if family == "openai-reasoning":
+        return [
+            HumanMessage(content=f"{planner_prompt}\n\n{human_content}"),
+            *history,
+        ]
+    return [
+        SystemMessage(content=planner_prompt),
+        *history,
+        HumanMessage(content=human_content),
+    ]
+
+
 async def _plan(
     prompt: str,
     history: list[BaseMessage],
@@ -119,20 +150,13 @@ async def _plan(
     *,
     provider: str,
     model: str,
+    family: str,
     config: CoreConfig,
 ) -> str:
     try:
-        llm = build_llm(provider, model, config)
+        llm = build_llm(provider, model, config, family=family)
         msg = await llm.ainvoke(
-            [
-                SystemMessage(content=PLANNER_SYSTEM_PROMPT),
-                *history,
-                HumanMessage(
-                    content=(
-                        f"{_render_context_block(context)}\n\nUser request:\n{prompt or '(empty)'}"
-                    )
-                ),
-            ]
+            _build_planner_messages(prompt, history, context, family)
         )
     except asyncio.CancelledError:
         raise
@@ -146,17 +170,15 @@ async def _plan(
     return plan_text
 
 
-async def _codegen(
+def _build_codegen_messages(
     prompt: str,
     plan: str,
     history: list[BaseMessage],
     context: ProjectContext,
-    *,
-    provider: str,
-    model: str,
-    config: CoreConfig,
-) -> PatchBundle:
-    human = (
+    family: str,
+) -> list[BaseMessage]:
+    codegen_prompt = get_prompt(family, "codegen")
+    human_content = (
         f"{_render_context_block(context)}\n\n"
         f"User request:\n{prompt or '(empty)'}\n\n"
         f"Plan:\n{plan or '(none)'}\n\n"
@@ -165,16 +187,34 @@ async def _codegen(
         "wholesale, and 'edit' only for surgical tweaks whose search "
         "strings appear verbatim in the file bodies above."
     )
+    if family == "openai-reasoning":
+        return [
+            HumanMessage(content=f"{codegen_prompt}\n\n{human_content}"),
+            *history,
+        ]
+    return [
+        SystemMessage(content=codegen_prompt),
+        *history,
+        HumanMessage(content=human_content),
+    ]
 
+
+async def _codegen(
+    prompt: str,
+    plan: str,
+    history: list[BaseMessage],
+    context: ProjectContext,
+    *,
+    provider: str,
+    model: str,
+    family: str,
+    config: CoreConfig,
+) -> PatchBundle:
     try:
-        llm = build_llm(provider, model, config)
+        llm = build_llm(provider, model, config, family=family)
         structured = llm.with_structured_output(PatchBundle)
         result = await structured.ainvoke(
-            [
-                SystemMessage(content=CODEGEN_SYSTEM_PROMPT),
-                *history,
-                HumanMessage(content=human),
-            ]
+            _build_codegen_messages(prompt, plan, history, context, family)
         )
     except asyncio.CancelledError:
         raise
@@ -198,15 +238,18 @@ async def run_codegen_stream(
     config: CoreConfig | None = None,
     provider: str | None = None,
     model: str | None = None,
+    family: str | None = None,
+    mode: str = "build",
 ) -> AsyncIterator[StreamEvent]:
     current = config or CoreConfig()
 
     yield StatusEvent(stage="planning", note="Reading project")
 
     try:
-        resolved_provider, resolved_model = model_catalog.resolve(
+        resolved_provider, resolved_model, catalog_family = model_catalog.resolve(
             provider, model, current
         )
+        resolved_family = family if family is not None else catalog_family
     except ValueError as exc:
         yield ErrorEvent(message=str(exc), recoverable=False)
         return
@@ -253,6 +296,7 @@ async def run_codegen_stream(
             context,
             provider=resolved_provider,
             model=resolved_model,
+            family=resolved_family,
             config=current,
         )
     except CodegenError as exc:
@@ -266,6 +310,10 @@ async def run_codegen_stream(
 
     yield MessageDeltaEvent(content=plan_text + "\n")
 
+    if mode == "plan":
+        yield StatusEvent(stage="plan_ready")
+        return
+
     try:
         bundle = await _codegen(
             prompt,
@@ -274,6 +322,7 @@ async def run_codegen_stream(
             context,
             provider=resolved_provider,
             model=resolved_model,
+            family=resolved_family,
             config=current,
         )
     except CodegenError as exc:

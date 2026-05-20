@@ -39,7 +39,7 @@ class ShellExecEvent(_Event):
 
 class StatusEvent(_Event):
     type: Literal["status"] = "status"
-    stage: Literal["planning", "generating", "done", "cancelled"]
+    stage: Literal["planning", "generating", "done", "cancelled", "plan_ready"]
     note: str | None = None
     snapshot_id: str | None = None
 
@@ -70,5 +70,6 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=16000)
     history: list[dict[str, str]] | None = None
     retry: bool = False
-    provider: Literal["openai", "gemini"] | None = None
+    provider: Literal["openai", "gemini", "ollama"] | None = None
     model: str | None = Field(default=None, max_length=128)
+    mode: Literal["plan", "build"] = "build"

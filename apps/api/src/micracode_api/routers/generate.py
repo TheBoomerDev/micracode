@@ -72,6 +72,7 @@ async def _ui_message_stream(
             config=engine.config,
             provider=payload.provider,
             model=payload.model,
+            mode=payload.mode,
         ):
             if await request.is_disconnected():
                 logger.info("client disconnected — aborting stream")

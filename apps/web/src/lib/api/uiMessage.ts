@@ -13,7 +13,7 @@ export type MicracodeDataParts = {
   "file-write": { path: string; content: string };
   "file-delete": { path: string };
   status: {
-    stage: "planning" | "generating" | "done" | "cancelled";
+    stage: "planning" | "generating" | "done" | "cancelled" | "plan_ready";
     note?: string | null;
     snapshot_id?: string | null;
   };
