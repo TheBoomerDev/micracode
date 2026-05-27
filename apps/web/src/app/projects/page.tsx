@@ -1,9 +1,19 @@
 'use client';
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { V0ChatPanel } from "@/components/chat/V0ChatPanel";
-import { V0WorkspacePanel } from "@/components/editor/V0WorkspacePanel";
+
+// Dynamically load heavy workspace components (client-side only)
+const V0ChatPanel = dynamic(
+  () => import("@/components/chat/V0ChatPanel").then((m) => m.V0ChatPanel),
+  { ssr: false }
+);
+
+const V0WorkspacePanel = dynamic(
+  () => import("@/components/editor/V0WorkspacePanel").then((m) => m.V0WorkspacePanel),
+  { ssr: false }
+);
 
 function getUrlParams() {
   if (typeof window === "undefined") {
@@ -32,7 +42,7 @@ export default function ProjectsPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">
-          {typeof window === "undefined" ? "Loading..." : "Missing project id"}
+          {typeof window === "undefined" ? "" : "Missing project id"}
         </p>
       </div>
     );
