@@ -1,24 +1,45 @@
 'use client';
 
 import { Check, ChevronDown, RefreshCw, Settings, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useModelStore } from "@/store/modelStore";
 
-type ProviderId = "gemini" | "openai" | "ollama";
+type ProviderId = "gemini" | "openai" | "openrouter" | "deepseek" | "glm" | "zai" | "ollama";
 
-const PROVIDERS: { id: ProviderId; label: string; docs: string }[] = [
-  { id: "gemini", label: "Google Gemini", docs: "https://ai.google.dev/gemini-api/docs" },
-  { id: "openai", label: "OpenAI", docs: "https://platform.openai.com/api-keys" },
-  { id: "ollama", label: "Ollama (local)", docs: "https://ollama.com/download" },
+interface ProviderConfig {
+  id: ProviderId;
+  label: string;
+  keyLabel: string;
+  keyPlaceholder: string;
+  docs: string;
+}
+
+const PROVIDERS: ProviderConfig[] = [
+  { id: "gemini", label: "Google Gemini", keyLabel: "Google Gemini API Key", keyPlaceholder: "AIza...", docs: "https://ai.google.dev/gemini-api/docs" },
+  { id: "openai", label: "OpenAI", keyLabel: "OpenAI API Key", keyPlaceholder: "sk-...", docs: "https://platform.openai.com/api-keys" },
+  { id: "openrouter", label: "OpenRouter", keyLabel: "OpenRouter API Key", keyPlaceholder: "sk-or-...", docs: "https://openrouter.ai/keys" },
+  { id: "deepseek", label: "DeepSeek", keyLabel: "DeepSeek API Key", keyPlaceholder: "sk-...", docs: "https://platform.deepseek.com/api_keys" },
+  { id: "glm", label: "GLM (Zhipu AI)", keyLabel: "GLM API Key", keyPlaceholder: "glm-...", docs: "https://open.bigmodel.cn/usercenter/apikeys" },
+  { id: "zai", label: "Z.AI (01.AI)", keyLabel: "Z.AI API Key", keyPlaceholder: "yi-...", docs: "https://platform.01.ai/api-keys" },
+  { id: "ollama", label: "Ollama (local)", keyLabel: "Ollama Base URL", keyPlaceholder: "http://localhost:11434", docs: "https://ollama.com/download" },
 ];
+
+function getKeyField(id: ProviderId): string {
+  if (id === "ollama") return "ollamaUrl";
+  return `${id}Key`;
+}
 
 const STORAGE_KEY = "oe:settings";
 
 interface SavedSettings {
   provider: ProviderId;
-  geminiKey: string;
   openaiKey: string;
+  geminiKey: string;
+  openrouterKey: string;
+  deepseekKey: string;
+  glmKey: string;
+  zaiKey: string;
   ollamaUrl: string;
   outputDir: string;
 }
@@ -35,8 +56,12 @@ function loadSettings(): SavedSettings {
 function defaultSettings(): SavedSettings {
   return {
     provider: "gemini",
-    geminiKey: "",
     openaiKey: "",
+    geminiKey: "",
+    openrouterKey: "",
+    deepseekKey: "",
+    glmKey: "",
+    zaiKey: "",
     ollamaUrl: "http://localhost:11434",
     outputDir: "",
   };
@@ -72,17 +97,17 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   const catalog = useModelStore((s) => s.catalog);
   const isLoading = useModelStore((s) => s.isLoading);
-  const storeProvider = useModelStore((s) => s.provider);
   const storeModel = useModelStore((s) => s.model);
   const setSelection = useModelStore((s) => s.setSelection);
   const loadCatalog = useModelStore((s) => s.loadCatalog);
   const saveApiKey = useModelStore((s) => s.saveApiKey);
 
-  // Load models from providers on mount
+  // Load catalog on mount
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
 
+  // Close on Escape or outside click
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -107,22 +132,24 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
     const next = { ...settings, ...patch };
     setSettings(next);
     saveSettings(next);
-    // Sync API keys with modelStore so it can fetch models directly
-    if (patch.geminiKey !== undefined) saveApiKey("gemini", patch.geminiKey);
-    if (patch.openaiKey !== undefined) saveApiKey("openai", patch.openaiKey);
-    if (patch.ollamaUrl !== undefined) saveApiKey("ollama", patch.ollamaUrl);
-    if (patch.provider !== undefined) {
-      // When provider changes, trigger catalog reload
-      loadCatalog();
+    // Sync API keys with modelStore
+    for (const p of PROVIDERS) {
+      const field = getKeyField(p.id);
+      const val = (next as Record<string, string>)[field];
+      if (val !== undefined) {
+        if (p.id === "ollama") saveApiKey("ollama", val);
+        else saveApiKey(p.id, val);
+      }
     }
+    if (patch.provider) loadCatalog();
   };
 
+  const activeConfig = PROVIDERS.find((p) => p.id === settings.provider);
   const activeProvider = catalog?.providers.find((p) => p.id === settings.provider);
   const activeModel = activeProvider?.models.find((m) => m.id === storeModel);
   const activeLabel = activeModel?.label ?? storeModel ?? "Select model";
-  const hasApiKey = settings.provider === "gemini" ? settings.geminiKey
-    : settings.provider === "openai" ? settings.openaiKey
-    : settings.ollamaUrl;
+  const keyValue = settings[getKeyField(settings.provider) as keyof SavedSettings] as string;
+  const hasKey = Boolean(keyValue);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -143,7 +170,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Content */}
-        <div className="space-y-5 px-5 py-5">
+        <div className="max-h-[70vh] space-y-5 overflow-y-auto px-5 py-5">
           {/* Provider */}
           <fieldset>
             <label className="mb-1.5 block text-xs font-medium text-zinc-400">
@@ -163,56 +190,29 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           </fieldset>
 
           {/* API Key */}
-          {settings.provider === "gemini" && (
+          {activeConfig && (
             <fieldset>
               <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Google Gemini API Key
+                {activeConfig.keyLabel}
               </label>
               <input
                 type="password"
-                value={settings.geminiKey}
-                onChange={(e) => update({ geminiKey: e.target.value })}
-                placeholder="AIza..."
+                value={keyValue}
+                onChange={(e) => {
+                  const field = getKeyField(settings.provider);
+                  update({ [field]: e.target.value } as unknown as Partial<SavedSettings>);
+                }}
+                placeholder={activeConfig.keyPlaceholder}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600"
               />
-              <a href={PROVIDERS.find((p) => p.id === "gemini")?.docs}
-                 target="_blank" rel="noopener noreferrer"
-                 className="mt-1 block text-xs text-blue-400 hover:underline">
-                Get an API key →
+              <a
+                href={activeConfig.docs}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 block text-xs text-blue-400 hover:underline"
+              >
+                Get API key →
               </a>
-            </fieldset>
-          )}
-          {settings.provider === "openai" && (
-            <fieldset>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                OpenAI API Key
-              </label>
-              <input
-                type="password"
-                value={settings.openaiKey}
-                onChange={(e) => update({ openaiKey: e.target.value })}
-                placeholder="sk-..."
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600"
-              />
-              <a href={PROVIDERS.find((p) => p.id === "openai")?.docs}
-                 target="_blank" rel="noopener noreferrer"
-                 className="mt-1 block text-xs text-blue-400 hover:underline">
-                Get an API key →
-              </a>
-            </fieldset>
-          )}
-          {settings.provider === "ollama" && (
-            <fieldset>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Ollama Base URL
-              </label>
-              <input
-                type="text"
-                value={settings.ollamaUrl}
-                onChange={(e) => update({ ollamaUrl: e.target.value })}
-                placeholder="http://localhost:11434"
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 font-mono"
-              />
             </fieldset>
           )}
 
@@ -226,17 +226,18 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => {
                   if (catalog && activeProvider) setModelPickerOpen(!modelPickerOpen);
-                  else if (hasApiKey) loadCatalog();
+                  else if (hasKey) loadCatalog();
                 }}
                 disabled={isLoading}
                 className="w-full flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 transition hover:bg-zinc-800"
               >
-                <span className="truncate font-mono">{isLoading ? "Loading models..." : activeLabel}</span>
+                <span className="truncate font-mono">
+                  {isLoading ? "Loading models..." : activeLabel}
+                </span>
                 <ChevronDown className="size-4 shrink-0 opacity-70" />
               </button>
 
-              {/* Refresh button */}
-              {hasApiKey && (
+              {hasKey && (
                 <button
                   type="button"
                   onClick={() => loadCatalog()}
@@ -248,12 +249,13 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
                 </button>
               )}
 
-              {/* Dropdown */}
               {modelPickerOpen && catalog && activeProvider && (
                 <div className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
                   {activeProvider.models.length === 0 ? (
                     <div className="px-3 py-4 text-center text-xs text-zinc-500">
-                      {hasApiKey ? "No models found. Try refreshing." : "Enter an API key to load models."}
+                      {hasKey
+                        ? "No models found. Try refreshing."
+                        : "Enter an API key above to load models."}
                     </div>
                   ) : (
                     activeProvider.models.map((m) => {
@@ -282,11 +284,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
                 </div>
               )}
             </div>
-            {!hasApiKey && (
-              <p className="mt-1 text-[10px] text-zinc-600">
-                Enter an API key above to load available models dynamically.
-              </p>
-            )}
           </fieldset>
 
           {/* Output Directory */}
@@ -295,7 +292,10 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               Output Directory
             </label>
             <p className="mb-2 text-[10px] text-zinc-600">
-              Projects will be created at this path: <code className="text-zinc-500">{settings.outputDir || "~/opener-apps/"} / {"{project-name}"}</code>
+              Projects will be created at:{" "}
+              <code className="text-zinc-500">
+                {settings.outputDir || "~/opener-apps/"}/{"{project-name}"}
+              </code>
             </p>
             <div className="flex gap-2">
               <input

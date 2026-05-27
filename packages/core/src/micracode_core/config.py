@@ -23,7 +23,7 @@ class CoreConfig(BaseSettings):
     log_level: str = Field(default="INFO")
 
     # --- LLM ------------------------------------------------------------------
-    llm_provider: Literal["gemini", "openai", "ollama"] = Field(default="gemini")
+    llm_provider: Literal["gemini", "openai", "ollama", "openrouter", "deepseek", "glm", "zai"] = Field(default="gemini")
 
     google_api_key: str = Field(default="")
     gemini_model: str = Field(default="gemini-2.5-flash")
@@ -31,24 +31,39 @@ class CoreConfig(BaseSettings):
     openai_api_key: str = Field(default="")
     openai_model: str = Field(default="")
 
+    openrouter_api_key: str = Field(default="")
+    deepseek_api_key: str = Field(default="")
+    glm_api_key: str = Field(default="")
+    zai_api_key: str = Field(default="")
+
     ollama_base_url: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="")
 
     @property
     def active_model(self) -> str:
-        if self.llm_provider == "openai":
-            return self.openai_model
-        if self.llm_provider == "ollama":
-            return self.ollama_model
-        return self.gemini_model
+        model_map = {
+            "openai": self.openai_model,
+            "gemini": self.gemini_model,
+            "ollama": self.ollama_model,
+        }
+        if self.llm_provider in model_map:
+            return model_map[self.llm_provider]
+        # For openrouter/deepseek/glm/zai, return the provider name as hint
+        return ""
 
     @property
     def active_api_key(self) -> str:
-        if self.llm_provider == "openai":
-            return self.openai_api_key
-        if self.llm_provider == "ollama":
-            return ""
-        return self.google_api_key
+        key_map = {
+            "openai": self.openai_api_key,
+            "gemini": self.google_api_key,
+            "openrouter": self.openrouter_api_key,
+            "deepseek": self.deepseek_api_key,
+            "glm": self.glm_api_key,
+            "zai": self.zai_api_key,
+        }
+        if self.llm_provider in key_map:
+            return key_map[self.llm_provider]  # type: ignore[literal-required]
+        return ""
 
     # --- Tool-calling loop ----------------------------------------------------
     max_tool_iterations: int = Field(default=20)
