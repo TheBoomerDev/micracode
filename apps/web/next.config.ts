@@ -17,12 +17,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: "export",
+  // output: "export", // TEMP: removed for build compatibility - define route manually if needed
   trailingSlash: true,
   reactStrictMode: true,
-  experimental: {
-    typedRoutes: true,
-  },
+  // experimental: {
+  //   typedRoutes: true, // Disabled - incompatible with query string links
+  // },
   transpilePackages: ["@micracode/shared", "@webcontainer/api"],
   async headers() {
     return [
