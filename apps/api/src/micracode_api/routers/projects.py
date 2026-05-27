@@ -16,7 +16,7 @@ from micracode_core.schemas.project import (
 )
 from micracode_core.storage import SLUG_RE, SNAPSHOT_ID_RE, iter_ignored_top_level
 
-from ..deps import StorageDep
+from ..deps import EngineDep, StorageDep
 
 router = APIRouter(prefix="/projects")
 
@@ -203,3 +203,51 @@ async def delete_project_snapshot(
     if not deleted:
         raise HTTPException(status_code=404, detail="snapshot not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{project_id}/docs/generate")
+async def generate_project_docs(
+    project_id: SlugPath,
+    body: dict,
+    storage: StorageDep,
+    engine: EngineDep,
+) -> dict:
+    """Generate all documentation sections using the configured LLM."""
+    record = storage.get_project(project_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="project not found")
+
+    from micracode_core.docs_generator import generate_all_docs as _generate
+
+    try:
+        results = await _generate(
+            project_name=record.name,
+            user_prompt=body.get("prompt", record.name),
+            storage=storage,
+            project_slug=project_id,
+            config=engine.config,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"sections": results}
+
+
+@router.post("/{project_id}/git/init")
+async def init_project_git(
+    project_id: SlugPath,
+    storage: StorageDep,
+) -> dict:
+    """Initialize git repos for project subdirectories."""
+    record = storage.get_project(project_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="project not found")
+
+    from micracode_core.git_automation import init_project_git as _init_git
+
+    try:
+        results = _init_git(storage.root, project_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"repos": results}
