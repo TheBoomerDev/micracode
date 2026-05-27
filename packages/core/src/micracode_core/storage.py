@@ -104,18 +104,24 @@ class Storage:
             n += 1
         return candidate
 
-    def create_project(self, name: str, template: str = "next") -> ProjectRecord:
+    def create_project(self, name: str, template: str = "next", project_type: str = "app") -> ProjectRecord:
         self.ensure_root()
         slug = self.unique_slug(name)
         proj = self.root / slug
         sidecar = proj / SIDECAR_DIR
         sidecar.mkdir(parents=True, exist_ok=False)
 
+        # For full projects, create code/ and docs/ structure
+        if project_type == "full":
+            (proj / "code").mkdir(exist_ok=True)
+            (proj / "docs").mkdir(exist_ok=True)
+
         now = _now()
         record = ProjectRecord(
             id=slug,
             name=name.strip(),
             template=template,
+            project_type=project_type,
             created_at=now,
             updated_at=now,
         )
@@ -123,8 +129,10 @@ class Storage:
         (sidecar / PROMPTS_FILE).touch()
 
         if template == "next":
+            # Write starter files in code/ subdir for full projects
+            prefix = "code/" if project_type == "full" else ""
             for rel, content in NEXT_STARTER_FILES.items():
-                self.write_file(slug, rel, content)
+                self.write_file(slug, f"{prefix}{rel}", content)
             refreshed = self._try_read_project_json(slug)
             if refreshed is not None:
                 record = refreshed

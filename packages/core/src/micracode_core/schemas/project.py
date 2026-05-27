@@ -19,6 +19,7 @@ class ProjectRecord(BaseModel):
     )
     name: str = Field(min_length=1, max_length=120)
     template: str = "next"
+    project_type: str = "app"  # "app" for quick apps, "full" for extended projects
     created_at: datetime
     updated_at: datetime
 
@@ -26,6 +27,7 @@ class ProjectRecord(BaseModel):
 class CreateProjectRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     template: str = "next"
+    project_type: str = "app"
 
 
 class UpdateProjectFileRequest(BaseModel):

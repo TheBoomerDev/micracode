@@ -7,18 +7,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def _default_data_dir() -> Path:
+def _default_output_dir() -> Path:
     return Path.home() / "opener-apps"
 
 
 class CoreConfig(BaseSettings):
-    """Core runtime settings shared across all Micracode apps.
-
-    Each app layer (web server, CLI, desktop) instantiates this with its own
-    env-file or explicit overrides.  The core never does filesystem I/O to
-    locate configuration.
-    """
-
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -62,4 +55,5 @@ class CoreConfig(BaseSettings):
     shell_exec_output_limit: int = Field(default=8192)
 
     # --- Storage --------------------------------------------------------------
-    opener_apps_dir: Path = Field(default_factory=_default_data_dir)
+    opener_apps_dir: Path = Field(default_factory=_default_output_dir)
+    project_type: str = Field(default="app", description='"app" for quick apps, "full" for extended projects')

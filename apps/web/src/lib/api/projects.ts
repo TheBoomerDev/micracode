@@ -23,6 +23,7 @@ export interface ProjectRecord {
 export interface CreateProjectBody {
   name: string;
   template?: string;
+  project_type?: string;
 }
 
 export interface PromptRecord {
@@ -107,7 +108,11 @@ export function createProject(
 ): Promise<ProjectRecord> {
   return request<ProjectRecord>(
     "/v1/projects",
-    { method: "POST", body: JSON.stringify(body) },
+    { method: "POST", body: JSON.stringify({
+      name: body.name,
+      template: body.template ?? "next",
+      project_type: body.project_type ?? "app",
+    }) },
     opts,
   );
 }
