@@ -44,7 +44,7 @@ export interface V0ChatPanelProps {
   hasInitialHistory?: boolean;
 }
 
-type Stage = "idle" | "planning" | "generating" | "done" | "cancelled";
+type Stage = "idle" | "planning" | "generating" | "done" | "cancelled" | "plan_ready";
 
 type ProcessLog =
   | { id: string; kind: "thought"; seconds: number }
