@@ -53,24 +53,45 @@ that don't send a selection.
 
 ### Supported model IDs
 
-The model picker is driven by a registry on the server. As of this
-documentation, the accepted IDs are:
+The model picker is driven by a registry on the server. The server
+fetches available models **dynamically** from OpenAI and Gemini APIs
+when API keys are configured; otherwise it falls back to a static
+catalog.
 
-**Google Gemini**
+**Google Gemini** (dynamic fetch or fallback)
 
-- `gemini-2.5-flash`
-- `gemini-2.5-pro`
-- `gemini-2.5-flash-lite`
+Dynamic: fetches from `https://generativelanguage.googleapis.com/v1/models`
+Fallback:
+- `gemini-3.1-pro` (latest)
+- `gemini-3.5-flash`
+- `gemini-3-flash`
+- `gemini-3.1-flash-lite`
+- `gemini-2.5-pro` (legacy)
+- `gemini-2.5-flash` (legacy)
+- `gemini-2.5-flash-lite` (legacy)
+- `nanobanana-2` (images)
+- `nanobanana-pro` (images)
 
-**OpenAI**
+**OpenAI** (dynamic fetch or fallback)
 
-- `gpt-5.4`
-- `gpt-5-mini`
+Dynamic: fetches from `https://api.openai.com/v1/models`
+Fallback:
+- `gpt-5.5` (latest)
 - `gpt-4.1`
+- `gpt-4o`
+- `gpt-4o-mini`
+- `o3` (reasoning)
+- `o3-mini` (reasoning)
+- `o1` (reasoning)
+- `o1-mini` (reasoning)
 
 **Ollama (local)**
 
-Ollama models are **not** a static list — they are fetched dynamically from your local Ollama daemon (`GET /api/tags`) each time `GET /v1/models` is called. Any model you have pulled with `ollama pull <model>` will appear in the UI picker automatically. If the daemon is not reachable or has no models installed, the Ollama section is omitted from the picker entirely.
+Ollama models are **always fetched dynamically** from your local Ollama daemon
+(`GET /api/tags`) each time `GET /v1/models` is called. Any model you have
+pulled with `ollama pull <model>` will appear in the UI picker automatically.
+If the daemon is not reachable or has no models installed, the Ollama
+section is omitted from the picker entirely.
 
 To see the live list (including which providers are currently
 "available" — meaning a key is configured), hit:

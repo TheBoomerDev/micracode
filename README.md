@@ -137,8 +137,14 @@ Star us, and you will receive all release notifications from GitHub without any 
 ### Prerequisites
 - **Node.js** v22.18.0 (pinned via `.nvmrc`)
 - **Bun** ≥ 1.1.0
-- **Python** ≥ 3.12 (managed automatically by `uv`)
+- **Python** ≥ 3.12 (or managed by `uv`)
 - **uv** ≥ 0.4
+
+> **Alternative for uv:** If `uv` is not in your PATH, install the API manually:
+> ```bash
+> cd apps/api && python3 -m venv .venv && source .venv/bin/activate && pip install -e .
+> ```
+
 - A **Google Gemini** or **OpenAI** API key, **or** a locally running [Ollama](https://ollama.com) instance (no API key needed)
 
 ### Environment Setup

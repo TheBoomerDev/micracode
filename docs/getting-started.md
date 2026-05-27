@@ -8,9 +8,19 @@ instance with your first project open in the workspace.
 | Tool   | Version     | Install                                                                                |
 | ------ | ----------- | -------------------------------------------------------------------------------------- |
 | Node   | `v22.18.0`  | [`nvm`](https://github.com/nvm-sh/nvm): `nvm install 22.18.0 && nvm use`               |
-| Bun    | `>= 1.1.0`  | [`bun`](https://bun.sh): `curl -fsSL https://bun.sh/install \| bash`                   |
-| Python | `>= 3.12`   | Managed automatically by `uv`                                                          |
-| uv     | `>= 0.4`    | [`uv`](https://docs.astral.sh/uv/): `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Bun    | `>= 1.1.0`  | [`bun`](https://bun.sh): `curl -fsSL https://bun.sh/install | bash`                   |
+| Python | `>= 3.12`   | System Python or managed by `uv`                                                        |
+| uv     | `>= 0.4`    | [`uv`](https://docs.astral.sh/uv/): `curl -LsSf https://astral.sh/uv/install.sh | sh`   |
+
+> **Alternative for uv:** If you have trouble with `uv` in your PATH, you can install the
+> Python backend manually:
+>
+> ```bash
+> cd apps/api
+> python3 -m venv .venv
+> source .venv/bin/activate
+> pip install -e .
+> ```
 
 The repo's `.nvmrc` pins the Node version, so `nvm use` from the project
 root picks the right one.
