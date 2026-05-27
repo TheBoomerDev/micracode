@@ -24,6 +24,7 @@ export interface CreateProjectBody {
   name: string;
   template?: string;
   project_type?: string;
+  output_dir?: string;
 }
 
 export interface PromptRecord {
@@ -112,6 +113,7 @@ export function createProject(
       name: body.name,
       template: body.template ?? "next",
       project_type: body.project_type ?? "app",
+      output_dir: body.output_dir ?? "",
     }) },
     opts,
   );

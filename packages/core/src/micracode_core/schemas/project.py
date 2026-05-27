@@ -28,6 +28,7 @@ class CreateProjectRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     template: str = "next"
     project_type: str = "app"
+    output_dir: str = ""  # Absolute path; empty means use default
 
 
 class UpdateProjectFileRequest(BaseModel):

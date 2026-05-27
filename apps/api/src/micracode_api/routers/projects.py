@@ -54,6 +54,11 @@ async def list_projects(storage: StorageDep) -> list[ProjectRecord]:
 @router.post("", response_model=ProjectRecord, status_code=status.HTTP_201_CREATED)
 async def create_project(body: CreateProjectRequest, storage: StorageDep) -> ProjectRecord:
     try:
+        if body.output_dir:
+            from pathlib import Path
+            from micracode_core.storage import Storage
+            custom_storage = Storage(Path(body.output_dir))
+            return custom_storage.create_project(name=body.name, template=body.template, project_type=body.project_type)
         return storage.create_project(name=body.name, template=body.template, project_type=body.project_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

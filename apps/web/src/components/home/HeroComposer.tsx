@@ -19,7 +19,16 @@ export function HeroComposer({ className }: { className?: string }) {
     if (!trimmed || isPending) return;
     setError(null);
     try {
-      const record = await createProject({ name: trimmed });
+      // Read output dir from settings
+      let outputDir = "";
+      try {
+        const raw = localStorage.getItem("oe:settings");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          outputDir = parsed.outputDir || "";
+        }
+      } catch {}
+      const record = await createProject({ name: trimmed, output_dir: outputDir || undefined });
       setPrompt("");
       const nextUrl =
         `/projects?id=${record.id}&prompt=${encodeURIComponent(trimmed)}` as Route;

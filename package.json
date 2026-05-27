@@ -27,6 +27,7 @@
     "api:format": "uv run --directory apps/api ruff format ."
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "prettier": "^3.8.3",
     "typescript": "^6.0.3"
   },
