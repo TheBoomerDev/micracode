@@ -27,11 +27,11 @@
     "api:format": "uv run --directory apps/api ruff format ."
   },
   "devDependencies": {
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.170",
-    "ai": "^6.0.168"
+    "@ai-sdk/react": "^3.0.193",
+    "ai": "^6.0.191"
   }
 }
