@@ -46,8 +46,11 @@ _PROVIDERS: tuple[_Provider, ...] = (
         id="gemini",
         label="Google Gemini",
         models=(
+            _Model(id="gemini-3.5-flash", label="Gemini 3.5 Flash (latest)", family="gemini"),
+            _Model(id="gemini-3.1-flash-lite", label="Gemini 3.1 Flash Lite", family="gemini"),
             _Model(id="gemini-2.5-flash", label="Gemini 2.5 Flash", family="gemini"),
             _Model(id="gemini-2.5-pro", label="Gemini 2.5 Pro", family="gemini"),
+            _Model(id="gemini-embedding-2", label="Gemini Embedding 2", family="gemini"),
         ),
     ),
     _Provider(
@@ -65,8 +68,8 @@ _PROVIDERS: tuple[_Provider, ...] = (
         id="deepseek",
         label="DeepSeek",
         models=(
-            _Model(id="deepseek-chat", label="DeepSeek Chat", family="deepseek"),
-            _Model(id="deepseek-reasoner", label="DeepSeek Reasoner", family="deepseek"),
+            _Model(id="deepseek-chat", label="DeepSeek V3 (Chat)", family="deepseek"),
+            _Model(id="deepseek-reasoner", label="DeepSeek R1 (Reasoner)", family="deepseek"),
         ),
     ),
     _Provider(
@@ -126,10 +129,19 @@ async def _fetch_gemini_models(api_key: str) -> list[dict[str, str]]:
             )
             if resp.status_code == 200:
                 data = resp.json()
+                # Filter to relevant models: gemini-2.5+, gemini-3.x, gemma-4, embeddings
+                # Exclude: gemini-2.0*, gemini-2.5-flash-image (niche)
+                RELEVANT_PREFIXES = (
+                    "models/gemini-3.",   # latest gen (3.1, 3.5)
+                    "models/gemini-2.5",  # current gen
+                    "models/gemma-4",     # open model
+                    "models/gemini-embedding",
+                )
                 return [
                     {"id": m["name"].split("/")[-1], "label": m["name"].split("/")[-1]}
                     for m in data.get("models", [])
-                    if m.get("name", "").startswith("models/gemini-")
+                    if m.get("name", "").startswith(RELEVANT_PREFIXES)
+                    and "flash-image" not in m.get("name", "")
                 ]
             return []
     except Exception:
