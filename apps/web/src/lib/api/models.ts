@@ -12,7 +12,7 @@
 
 import { env } from "@/lib/env";
 
-export type ProviderId = "openai" | "gemini" | "openrouter" | "deepseek" | "glm" | "zai" | "ollama";
+export type ProviderId = "openai" | "gemini" | "openrouter" | "deepseek" | "glm" | "ollama";
 
 export interface ModelOption {
   id: string;

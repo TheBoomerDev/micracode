@@ -78,14 +78,6 @@ _PROVIDERS: tuple[_Provider, ...] = (
             _Model(id="glm-4-flash", label="GLM-4 Flash", family="glm"),
         ),
     ),
-    _Provider(
-        id="zai",
-        label="Z.AI (01.AI)",
-        models=(
-            _Model(id="yi-lightning", label="Yi Lightning", family="yi"),
-            _Model(id="yi-large", label="Yi Large", family="yi"),
-        ),
-    ),
 )
 
 
@@ -103,6 +95,7 @@ def _has_model(provider: _Provider, model_id: str) -> bool:
 # --- Dynamic fetch functions ---
 
 async def _fetch_openai_models(api_key: str) -> list[dict[str, str]]:
+    """Fetch models from OpenAI API: https://platform.openai.com/docs/api-reference/models/list"""
     if not api_key:
         return []
     try:
@@ -123,11 +116,11 @@ async def _fetch_openai_models(api_key: str) -> list[dict[str, str]]:
 
 
 async def _fetch_gemini_models(api_key: str) -> list[dict[str, str]]:
+    """Fetch models from Gemini API: https://ai.google.dev/api/models"""
     if not api_key:
         return []
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Gemini uses api_key as query param
             resp = await client.get(
                 f"https://generativelanguage.googleapis.com/v1/models?key={api_key}"
             )
@@ -144,6 +137,7 @@ async def _fetch_gemini_models(api_key: str) -> list[dict[str, str]]:
 
 
 async def _fetch_ollama_models(base_url: str) -> list[dict[str, str]]:
+    """Fetch models from local Ollama instance."""
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(f"{base_url}/api/tags")
@@ -155,7 +149,7 @@ async def _fetch_ollama_models(base_url: str) -> list[dict[str, str]]:
 
 
 async def _fetch_openrouter_models(api_key: str) -> list[dict[str, str]]:
-    """Fetch models from OpenRouter API."""
+    """Fetch models from OpenRouter API: https://openrouter.ai/docs/api/api-reference/models/get-models"""
     if not api_key:
         return []
     try:
@@ -176,13 +170,13 @@ async def _fetch_openrouter_models(api_key: str) -> list[dict[str, str]]:
 
 
 async def _fetch_deepseek_models(api_key: str) -> list[dict[str, str]]:
-    """Fetch models from DeepSeek API."""
+    """Fetch models from DeepSeek API: https://api-docs.deepseek.com/api/list-models"""
     if not api_key:
         return []
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                "https://api.deepseek.com/v1/models",
+                "https://api.deepseek.com/models",
                 headers={"Authorization": f"Bearer {api_key}"},
             )
             if resp.status_code == 200:
@@ -217,27 +211,6 @@ async def _fetch_glm_models(api_key: str) -> list[dict[str, str]]:
         return []
 
 
-async def _fetch_zai_models(api_key: str) -> list[dict[str, str]]:
-    """Fetch models from 01.AI (Yi) API."""
-    if not api_key:
-        return []
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                "https://api.01.ai/v1/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return [
-                    {"id": m["id"], "label": m.get("id", "")}
-                    for m in data.get("data", [])
-                ]
-            return []
-    except Exception:
-        return []
-
-
 # --- Provider fetch registry ---
 _FETCH_REGISTRY: dict[str, tuple[str, Any]] = {
     "openai": ("openai_api_key", _fetch_openai_models),
@@ -245,7 +218,6 @@ _FETCH_REGISTRY: dict[str, tuple[str, Any]] = {
     "openrouter": ("openrouter_api_key", _fetch_openrouter_models),
     "deepseek": ("deepseek_api_key", _fetch_deepseek_models),
     "glm": ("glm_api_key", _fetch_glm_models),
-    "zai": ("zai_api_key", _fetch_zai_models),
     "ollama": ("ollama_base_url", _fetch_ollama_models),
 }
 
@@ -263,7 +235,6 @@ async def list_catalog(
     to config values (from .env) and finally to hardcoded catalog.
     """
     providers = []
-    used_default_for: set[str] = set()
 
     for pid, (config_key, fetch_fn) in _FETCH_REGISTRY.items():
         # Determine the API key/base URL: override > config > None
@@ -296,7 +267,6 @@ async def list_catalog(
                     "available": bool(key_or_url),
                     "models": [{"id": m.id, "label": m.label} for m in p.models],
                 })
-                used_default_for.add(pid)
 
     # Determine default
     default = _default_selection(config, providers)
@@ -315,7 +285,6 @@ def _provider_label(pid: str) -> str:
         "openrouter": "OpenRouter",
         "deepseek": "DeepSeek",
         "glm": "GLM (Zhipu AI)",
-        "zai": "Z.AI (01.AI)",
         "ollama": "Ollama (local)",
     }
     return labels.get(pid, pid)
@@ -354,7 +323,6 @@ def _provider_available(config: CoreConfig, pid: str) -> bool:
         "openrouter": getattr(config, "openrouter_api_key", None),
         "deepseek": getattr(config, "deepseek_api_key", None),
         "glm": getattr(config, "glm_api_key", None),
-        "zai": getattr(config, "zai_api_key", None),
     }
     if pid == "ollama":
         return True
@@ -397,8 +365,8 @@ def resolve(
             raise ValueError("model must be non-empty for provider 'ollama'.")
         return ("ollama", model, "ollama")
 
-    # For dynamic providers (openrouter, etc.), accept any model
-    if provider in _FETCH_REGISTRY and provider not in _HARDCODED_IDS:
+    # For dynamic-only providers (openrouter, deepseek, glm), accept any model
+    if provider in ("openrouter", "deepseek", "glm"):
         if not model:
             raise ValueError(f"model must be non-empty for provider {provider!r}.")
         return (provider, model, "openai-chat")

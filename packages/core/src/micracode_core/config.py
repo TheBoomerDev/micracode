@@ -23,7 +23,7 @@ class CoreConfig(BaseSettings):
     log_level: str = Field(default="INFO")
 
     # --- LLM ------------------------------------------------------------------
-    llm_provider: Literal["gemini", "openai", "ollama", "openrouter", "deepseek", "glm", "zai"] = Field(default="gemini")
+    llm_provider: Literal["gemini", "openai", "ollama", "openrouter", "deepseek", "glm"] = Field(default="gemini")
 
     google_api_key: str = Field(default="")
     gemini_model: str = Field(default="gemini-2.5-flash")
@@ -34,7 +34,6 @@ class CoreConfig(BaseSettings):
     openrouter_api_key: str = Field(default="")
     deepseek_api_key: str = Field(default="")
     glm_api_key: str = Field(default="")
-    zai_api_key: str = Field(default="")
 
     ollama_base_url: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="")
@@ -59,7 +58,6 @@ class CoreConfig(BaseSettings):
             "openrouter": self.openrouter_api_key,
             "deepseek": self.deepseek_api_key,
             "glm": self.glm_api_key,
-            "zai": self.zai_api_key,
         }
         if self.llm_provider in key_map:
             return key_map[self.llm_provider]  # type: ignore[literal-required]

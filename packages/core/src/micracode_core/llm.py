@@ -34,11 +34,6 @@ _OPENAI_COMPAT: dict[str, dict[str, str]] = {
         "api_key_attr": "glm_api_key",
         "model_attr": "",
     },
-    "zai": {
-        "base_url": "https://api.01.ai/v1",
-        "api_key_attr": "zai_api_key",
-        "model_attr": "",
-    },
 }
 
 

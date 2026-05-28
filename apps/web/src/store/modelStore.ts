@@ -11,13 +11,11 @@ import {
 interface PersistedSlice {
   provider: string | null;
   model: string | null;
-  /** API keys saved by the user via Settings panel */
   geminiKey: string;
   openaiKey: string;
   openrouterKey: string;
   deepseekKey: string;
   glmKey: string;
-  zaiKey: string;
   ollamaUrl: string;
 }
 
@@ -48,7 +46,6 @@ function buildKeysDict(state: PersistedSlice): Record<string, string> {
   if (state.openrouterKey) keys.openrouter = state.openrouterKey;
   if (state.deepseekKey) keys.deepseek = state.deepseekKey;
   if (state.glmKey) keys.glm = state.glmKey;
-  if (state.zaiKey) keys.zai = state.zaiKey;
   if (state.ollamaUrl) keys.ollama = state.ollamaUrl;
   return keys;
 }
@@ -65,7 +62,6 @@ export const useModelStore = create<ModelStoreState>()(
       openrouterKey: "",
       deepseekKey: "",
       glmKey: "",
-      zaiKey: "",
       ollamaUrl: "http://localhost:11434",
       catalog: null,
       isLoading: false,
@@ -74,7 +70,6 @@ export const useModelStore = create<ModelStoreState>()(
       setSelection: (provider: string, model: string) => set({ provider, model }),
 
       saveApiKey: (provider: string, key: string) => {
-        // Dynamic key assignment using a type-safe approach
         const patch: Record<string, string | null> = {};
         patch[`${provider}Key`] = key;
         set(patch as unknown as Partial<ModelStoreState>);
@@ -85,11 +80,8 @@ export const useModelStore = create<ModelStoreState>()(
         set({ isLoading: true, error: null });
 
         try {
-          // Build keys dict from persisted state
           const state = get();
           const keys = buildKeysDict(state);
-
-          // Call backend with user's API keys so it can fetch dynamically
           const catalog = await getModelCatalog(keys);
 
           const { provider, model } = state;
@@ -119,7 +111,6 @@ export const useModelStore = create<ModelStoreState>()(
         openrouterKey: state.openrouterKey,
         deepseekKey: state.deepseekKey,
         glmKey: state.glmKey,
-        zaiKey: state.zaiKey,
         ollamaUrl: state.ollamaUrl,
       }),
     },

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useModelStore } from "@/store/modelStore";
 
-type ProviderId = "gemini" | "openai" | "openrouter" | "deepseek" | "glm" | "zai" | "ollama";
+type ProviderId = "gemini" | "openai" | "openrouter" | "deepseek" | "glm" | "ollama";
 
 interface ProviderConfig {
   id: ProviderId;
@@ -21,7 +21,6 @@ const PROVIDERS: ProviderConfig[] = [
   { id: "openrouter", label: "OpenRouter", keyLabel: "OpenRouter API Key", keyPlaceholder: "sk-or-...", docs: "https://openrouter.ai/keys" },
   { id: "deepseek", label: "DeepSeek", keyLabel: "DeepSeek API Key", keyPlaceholder: "sk-...", docs: "https://platform.deepseek.com/api_keys" },
   { id: "glm", label: "GLM (Zhipu AI)", keyLabel: "GLM API Key", keyPlaceholder: "glm-...", docs: "https://open.bigmodel.cn/usercenter/apikeys" },
-  { id: "zai", label: "Z.AI (01.AI)", keyLabel: "Z.AI API Key", keyPlaceholder: "yi-...", docs: "https://platform.01.ai/api-keys" },
   { id: "ollama", label: "Ollama (local)", keyLabel: "Ollama Base URL", keyPlaceholder: "http://localhost:11434", docs: "https://ollama.com/download" },
 ];
 
@@ -39,7 +38,6 @@ interface SavedSettings {
   openrouterKey: string;
   deepseekKey: string;
   glmKey: string;
-  zaiKey: string;
   ollamaUrl: string;
   outputDir: string;
 }
@@ -61,7 +59,6 @@ function defaultSettings(): SavedSettings {
     openrouterKey: "",
     deepseekKey: "",
     glmKey: "",
-    zaiKey: "",
     ollamaUrl: "http://localhost:11434",
     outputDir: "",
   };
