@@ -138,7 +138,18 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         else saveApiKey(p.id, val);
       }
     }
-    if (patch.provider) loadCatalog();
+    if (patch.provider) {
+      // Update modelStore provider too, with first model from new provider
+      const newProvider = patch.provider;
+      const newCatalog = catalog;
+      if (newCatalog) {
+        const p = newCatalog.providers.find((pp) => pp.id === newProvider);
+        if (p && p.models.length > 0) {
+          setSelection(newProvider, p.models[0].id);
+        }
+      }
+      loadCatalog();
+    }
   };
 
   const activeConfig = PROVIDERS.find((p) => p.id === settings.provider);
@@ -223,7 +234,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => {
                   if (catalog && activeProvider) setModelPickerOpen(!modelPickerOpen);
-                  else if (hasKey) loadCatalog();
+                  else loadCatalog();
                 }}
                 disabled={isLoading}
                 className="w-full flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 transition hover:bg-zinc-800"
@@ -234,17 +245,16 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
                 <ChevronDown className="size-4 shrink-0 opacity-70" />
               </button>
 
-              {hasKey && (
-                <button
-                  type="button"
-                  onClick={() => loadCatalog()}
-                  disabled={isLoading}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-300"
-                  title="Refresh models from API"
-                >
-                  <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                </button>
-              )}
+              {/* Always show refresh button - backend uses env keys as fallback */}
+              <button
+                type="button"
+                onClick={() => loadCatalog()}
+                disabled={isLoading}
+                className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-300"
+                title="Refresh models from API"
+              >
+                <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
 
               {modelPickerOpen && catalog && activeProvider && (
                 <div className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-auto rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
